@@ -274,12 +274,18 @@ function install_one_package
 
             add_to_pkg_config_path "$pkg_dir"
             
-            old_prefix=$(pkg-config --variable=prefix $pkg_name)
-            pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name
+            # old_prefix=$(pkg-config --variable=prefix $pkg_name)
+            # pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name
             # packages+=($pkg_name)
-            cflags+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name))
-            echo clags="${cflags[@]}"
-            libs+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --libs $pkg_name))
+            sed -i "s|^prefix=|prefix=${install_pkg_prefix}|g" "$_pkg_path"
+            
+            # TODO: remove miss include dir
+
+            # cflags+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name))
+            cflags+=($(pkg-config --cflags $pkg_name))
+            # echo clags="${cflags[@]}"
+            # libs+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --libs $pkg_name))
+            libs+=($(pkg-config --libs $pkg_name))
         fi
     done
 
@@ -313,7 +319,7 @@ function install_package
 
     for pkg in "$@"
     do
-        echo Install $pkg ...
+        echo $pkg installing ...
         install_one_package "$pkg" "$install_prefix" "$install_prefix"
     done
 }
