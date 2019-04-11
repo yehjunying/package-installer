@@ -133,32 +133,36 @@ function query_package_depends
     local deb_path=$1
     local pkg_deps=()
 
-    # depends=' Depends: libc6 (>= 2.14), libclang1-6.0 (>= 1:5.0~svn298832-1~), libgcc1 (>= 1:3.0), libstdc++6 (>= 5.2), libxapian30'
-    # depends=' Depends: ucf (>= 0.29), fonts-dejavu-core | ttf-bitstream-vera | fonts-liberation | fonts-freefont
-    # local depends=$(dpkg -I $(ls $pkg*.deb) | grep Depends:)
     local depends=$(dpkg -I $deb_path | grep Depends:)
     depends=${depends/Depends:/}
-    depends=${depends//[[:blank:]]/}
 
     OIFS="$IFS"
-    IFS=',|'
+    IFS=','
     read -ra depends <<< "${depends}"
     IFS="$OIFS"
 
     for dep_pkg in "${depends[@]}"; do
-        if [[ $dep_pkg =~ ([^\(]*) ]]; then
 
-            local pkg_name="${BASH_REMATCH[1]}"
-             
-            # local PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $pkg_name | grep "install ok installed")
-            # 
-            # if [ "" == "$PKG_OK" ]; then
-            #     pkg_deps+=($pkg_name)
-            # fi
-            if ! is_package_installed $pkg_name; then
-                pkg_deps+=($pkg_name)
-            fi
+        OIFS="$IFS"
+        IFS='|'
+        read -ra dep_pkg <<< "${dep_pkg}"
+        IFS="$OIFS"
+
+        # get first package of multiple candidates
+        dep_pkg=(${dep_pkg[@]})
+
+        local pkg_name="$dep_pkg"
+
+        if [[ $dep_pkg == *"("* ]]; then
+            [[ $dep_pkg =~ ([^\(]*) ]] && pkg_name="${BASH_REMATCH[1]}"
+        elif [[ $dep_pkg == *":"* ]]; then
+            [[ $dep_pkg =~ ([^:]*) ]] && pkg_name="${BASH_REMATCH[1]}"
         fi
+
+        if ! is_package_installed $pkg_name; then
+            pkg_deps+=($pkg_name)
+        fi
+
     done
 
     echo ${pkg_deps[@]}
@@ -250,9 +254,15 @@ function install_one_package
     local deb_path=$(get_deb_filepath $pkg "$deb_tmp_dir")
     local _pkg_deps=($(query_package_depends $deb_path))
 
-    for _pkg in ${_pkg_deps[@]}; do
-        install_one_package $_pkg "$2" "$3"
-    done
+    if [  ! -z "$_pkg_deps" ]; then
+        echo "Find depends ${_pkg_deps[@]} for $_pkg ...."
+
+        for _pkg in ${_pkg_deps[@]}; do
+            install_one_package $_pkg "$2" "$3"
+        done
+    else
+        echo "No find any new depends need to install for $_pkg"
+    fi
 
     if is_package_installed "$pkg"; then
         return 0
