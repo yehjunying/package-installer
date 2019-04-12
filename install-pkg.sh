@@ -19,20 +19,23 @@
 
 echo install-pkg loaded
 
-function change_link
+function fix_broken_symlinks
 {
     local dir="$1"
     local _f
 
-    for _f in $(find $dir -type l); do
-        target="$(readlink $_f)"
+    for _f in $(find "$dir" -type l ! -exec test -e {} \; -print); do
+        local target="$(readlink $_f)"
         if [ ! -f "$target" ]; then
-            if $(find "$dir" -name $(basename -- "$target") 1> /dev/null 2>&1); then
-                # echo FOUND
+            echo "Found broken symlinks $_f"
+
+            local _new_targets=$(find "$dir" /lib /usr -name $(basename -- "$target"))
+            local _new_target=(${_new_targets[@]})
+
+            if [ ! -z "$_new_target" ]; then
+                echo "Found new target $_new_target for $_f"
                 rm "$_f"
-                ln -s "$(find "$dir" -name $(basename -- "$target"))" "$_f"
-            # else
-                # echo NOT FOUND
+                ln -s "$_new_target" "$_f"
             fi
         fi
     done
@@ -255,13 +258,13 @@ function install_one_package
     local _pkg_deps=($(query_package_depends $deb_path))
 
     if [  ! -z "$_pkg_deps" ]; then
-        echo "Find depends ${_pkg_deps[@]} for $_pkg ...."
+        echo "Find depends ${_pkg_deps[@]} for $pkg ...."
 
         for _pkg in ${_pkg_deps[@]}; do
             install_one_package $_pkg "$2" "$3"
         done
     else
-        echo "No find any new depends need to install for $_pkg"
+        echo "No find any new depends need to install for $pkg"
     fi
 
     if is_package_installed "$pkg"; then
@@ -274,7 +277,7 @@ function install_one_package
         $pkgs_dir/$pkg-post-deb-extract "$install_pkg_prefix"
     fi
 
-    change_link "$2"
+    fix_broken_symlinks "$2"
 
     for _pkg_path in $(find $install_pkg_prefix -name *.pc); do   
         if [ -f "$_pkg_path" ]; then
