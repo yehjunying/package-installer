@@ -1,10 +1,76 @@
 PI_HOME=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-pkgs_dir=${1:-$(dirname "$0")}    # TODO: using --script-home=xxx
-package_cfg_path=${2}             # TODO: using --package-cfg-path=xx
-build_home=${3:-$(pwd)}           # TODO: using --build-home=xxx
+pkgs_dir=$PI_HOME
+package_cfg_path=""
+build_home=$(pwd)
 
 # TODO: all global variable using PI_ as prefix, and to Capital
+
+function print_help
+{
+    usage_text="Usage: $(basename "$0") [option] <package-cfg-path> -- Package Installer script
+options:
+    -h, --help                            Show this help text
+    -c, --clean                           Clean all genererated files"
+
+    echo "$usage_text"
+}
+
+function clean_all
+{
+    [ -d "$build_home/packages" ] && rm "$build_home/packages"
+}
+
+function main
+{
+    local _arg
+    while [[ $# -ne 0 ]]
+    do
+        arg="$1"
+        case "$arg" in
+            -h|--help)
+                print_help
+                exit 0
+                ;;
+            -c|--clean)
+                clean_all
+                exit 0
+                ;;
+            -p=*|--plugins-dir=*)
+                _arg="$(echo $arg | sed 's/[-a-zA-Z0-9]*=//')"
+                if [ ! -d "$_arg" ]; then
+                    echo "\"$_arg\" not a directory"
+                fi
+                pkgs_dir="$(realpath $_arg)"
+                ;;
+            -d=*|--destination-dir=*)
+                _arg="$(echo $arg | sed 's/[-a-zA-Z0-9]*=//')"
+                if [ ! -d "$_arg" ]; then
+                    echo "\"$_arg\" not a directory"
+                fi
+                build_home="$(realpath $_arg)"
+                ;;
+            *)
+                if [ ! -f "$(realpath $arg)" ]; then
+                    echo "\"$arg\" not found"
+                    print_help
+                    exit 1
+                fi
+
+                package_cfg_path="$(realpath $arg)"
+                break
+        esac
+        shift
+    done
+}
+
+main "$@"
+
+if [ -z "$package_cfg_path" ]; then
+    echo "package-cfg-path is required"
+    print_help
+    exit 1
+fi
 
 install_prefix="$build_home/packages" # this is default path for prefix. Let user can pass prefix from command line
 packages=()
