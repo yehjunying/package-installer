@@ -1,24 +1,3 @@
-# script_home=${1:-$(dirname "$0")} # TODO: using --script-home=xxx
-# package_cfg_path=${2}             # TODO: using --package-cfg-path=xx
-# build_home=${3:-$(pwd)}           # TODO: using --build-home=xxx
-# 
-# pkgs_dir="$script_home"
-# 
-# #SRC_PATH=$(realpath $(dirname "$0"))
-# 
-# install_prefix="$build_home/packages" # this is default path for prefix. Let user can pass prefix from command line
-# packages=()
-# cflags=()
-# libs=()
-# ld_library_path=()
-# path=()
-# 
-# if [ ! -d "$install_prefix" ]; then
-#     mkdir $install_prefix
-# fi
-
-echo install-pkg loaded
-
 function fix_broken_symlinks
 {
     local dir="$1"
@@ -40,8 +19,6 @@ function fix_broken_symlinks
         fi
     done
 }
-
-# change_link "$install_prefix"
 
 function join_by { local IFS="$1"; shift; echo "$*"; }
 
@@ -287,17 +264,11 @@ function install_one_package
 
             add_to_pkg_config_path "$pkg_dir"
             
-            # old_prefix=$(pkg-config --variable=prefix $pkg_name)
-            # pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name
-            # packages+=($pkg_name)
             sed -i "s|^prefix=|prefix=${install_pkg_prefix}|g" "$_pkg_path"
             
             # TODO: remove miss include dir
 
-            # cflags+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --cflags $pkg_name))
             cflags+=($(pkg-config --cflags $pkg_name))
-            # echo clags="${cflags[@]}"
-            # libs+=($(pkg-config --define-variable=prefix="$install_pkg_prefix$old_prefix" --libs $pkg_name))
             libs+=($(pkg-config --libs $pkg_name))
         fi
     done
@@ -313,11 +284,6 @@ function install_one_package
             libs+=(-L$(dirname $_so_path))
             # TODO: also update LD_LIBRARY_PATH
         fi
-
-        # if [ -L "$_so_path" ]; then
-        #     libs+=(-L$(dirname $(readlink $_so_path)))
-        #     ld_library_path+=($(dirname $(readlink $_so_path)))
-        # fi
     done
 
     packages+=($pkg)
@@ -336,64 +302,3 @@ function install_package
         install_one_package "$pkg" "$install_prefix" "$install_prefix"
     done
 }
-
-# # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# # system packages, install by apt-get
-# # cmake pkg-config swig3.0 doxygen graphviz aspell libxml-simple-perl
-# # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# # install_package libhiredis-dev libnl-3-dev libnl-genl-3-dev libnl-route-3-dev
-# # install_package swig3.0 libpython2.7-dev
-# # install_package googletest
-# # install_package libhiredis0.13
-# #                 ^^^^^^^^^^^^^^ ??
-# # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# . "$package_cfg_path"
-
-# echo $PKG_DEPENDENCIES
-
-# if [ ! -z ${PKG_DEPENDENCIES+x} ]; then
-#     PKG_DEPENDENCIES=($PKG_DEPENDENCIES)
-#     install_package "${PKG_DEPENDENCIES[@]}"
-# fi
-
-# exit 1
-
-# # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-# install_package libnl-3-dev libnl-genl-3-dev libnl-route-3-dev libhiredis-dev
-# install_package libpython2.7-dev        # dev:test
-# cflags+=(-I$(x86_64-linux-gnu-python2.7-config --prefix)/include)
-# cflags+=($(x86_64-linux-gnu-python2.7-config --includes))
-
-# install_package googletest              # dev:test
-# # install_package doxygen graphviz # aspell # dev:doc
-# # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-# # rm pkg_config_path.txt
-# # echo $PKG_CONFIG_PATH >> pkg_config_path.txt
-# #
-# # echo ${packages[@]}
-# # for i in "${packages[@]}"; do echo "$i" ; done
-
-# cat >"$install_prefix/.env" <<EOL
-# export PKG_CONFIG_PATH=$PKG_CONFIG_PATH
-# export PACKAGES="${packages[@]}"
-# export LIBS="${libs[@]}"
-# export CFLAGS="${cflags[@]}"
-# export CXXFLAGS="${cflags[@]}"
-# export _OLD_VIRTUAL_PATH="\$PATH"
-# export PATH="$(join_by : ${path[@]}):\$PATH"
-# export _OLD_LD_LIBRARY_PATH="\$LD_LIBRARY_PATH"
-# export LD_LIBRARY_PATH="$(join_by : ${ld_library_path[@]}):\$LD_LIBRARY_PATH"
-# EOL
-
-# cat >"$install_prefix/.deenv" <<EOL
-# if ! [ -z "\${_OLD_VIRTUAL_PATH+_}" ] ; then
-#     PATH="\$_OLD_VIRTUAL_PATH"
-#     export PATH
-#     unset _OLD_VIRTUAL_PATH
-# fi
-# EOL
-
-# # cat >add_to_profile ...
