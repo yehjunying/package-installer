@@ -4,6 +4,9 @@ pkgs_dir=$PI_HOME
 package_cfg_path=""
 build_home=$(pwd)
 
+install_global=no
+install_prod=yes
+
 # TODO: all global variable using PI_ as prefix, and to Capital
 
 function print_help
@@ -35,6 +38,10 @@ function main
             -c|--clean)
                 clean_all
                 exit 0
+                ;;
+            -g|--only-global)
+                install_global=yes
+                install_prod=no
                 ;;
             -p=*|--plugins-dir=*)
                 _arg="$(echo $arg | sed 's/[-a-zA-Z0-9]*=//')"
@@ -397,7 +404,24 @@ fi
 . "$PI_HOME/install-pkg.sh"
 . "$package_cfg_path"
 
+echo $PKG_GLOBAL_DEPENDENCIES
 echo $PKG_DEPENDENCIES
+
+if [[ "$install_global" == "yes" ]]; then
+    echo "Install global packages ..."
+
+    if [ ! -z ${PKG_GLOBAL_DEPENDENCIES+x} ]; then
+
+        if [ "$(id -u)" != "0" ]; then
+            echo "Required root permission to install global packages" 1>&2
+            exit 1
+        fi
+
+        apt-get install -y $PKG_GLOBAL_DEPENDENCIES
+    fi
+
+    [[ "$install_prod" == "no" ]] && exit 0
+fi
 
 if [ ! -z ${PKG_DEPENDENCIES+x} ]; then
     PKG_DEPENDENCIES=($PKG_DEPENDENCIES)
