@@ -256,19 +256,33 @@ function install_one_package
 
     fix_broken_symlinks "$2"
 
-    for _pkg_path in $(find $install_pkg_prefix -name *.pc); do   
+    for _pkg_path in $(find $install_pkg_prefix -name *.pc); do
         if [ -f "$_pkg_path" ]; then
             pkg_dir=$(dirname "$_pkg_path")
             pkg_name=$(basename -- "$_pkg_path")
             pkg_name="${pkg_name%.*}"
 
             add_to_pkg_config_path "$pkg_dir"
-            
-            sed -i "s|^prefix=|prefix=${install_pkg_prefix}|g" "$_pkg_path"
-            
-            # TODO: remove miss include dir
 
-            cflags+=($(pkg-config --cflags $pkg_name))
+            sed -i "s|^prefix=|prefix=${install_pkg_prefix}|g" "$_pkg_path"
+
+            pkg_includes=$(pkg-config --cflags $pkg_name)
+
+            for pkg_include in $pkg_includes
+            do
+                if [[ "$pkg_include" = -I* ]]; then
+                    temp=${pkg_include:2}
+
+                    if [ -d "$temp" ]; then
+                        # echo "include folder exist: $temp"
+
+                        cflags+=($pkg_include)
+                    fi
+
+                fi
+            done
+
+            # cflags+=($(pkg-config --cflags $pkg_name))
             libs+=($(pkg-config --libs $pkg_name))
         fi
     done
